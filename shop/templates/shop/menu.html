@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>منوی کافه مطالعه</title>
+
+  <!-- Tailwind & Icons -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Vazirmatn', sans-serif;
+      background-color: #EAD8C0;
+      color: #3F3A37;
+    }
+
+    /* نوار کتگوری */
+    #category-bar::-webkit-scrollbar {
+      height: 6px;
+    }
+    #category-bar::-webkit-scrollbar-thumb {
+      background: #A79277;
+      border-radius: 4px;
+    }
+
+    /* افکت شیشه‌ای آیتم‌ها */
+    .glass {
+      background: rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    /* انیمیشن فنجان در هدر */
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    .coffee-anim {
+      animation: float 2.5s ease-in-out infinite;
+    }
+
+    /* انیمیشن فنجان آیتم‌ها */
+    @keyframes steam {
+      0%, 100% { transform: translateY(0) rotate(0deg); opacity: 1; }
+      50% { transform: translateY(-3px) rotate(10deg); opacity: 0.8; }
+    }
+    .coffee-item-icon {
+      animation: steam 3s ease-in-out infinite;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- 🌰 Header -->
+  <header class="bg-[#A79277] text-[#FFF2E1] shadow-md py-4">
+    <div class="container mx-auto px-4 flex items-center justify-center gap-3 text-xl font-semibold">
+      <span>Study Coffee</span>
+      <i class="fa-solid fa-mug-saucer text-2xl coffee-anim"></i>
+      <span>کافه مطالعه</span>
+    </div>
+  </header>
+
+  <!-- 🔖 نوار کتگوری‌ها -->
+  <div id="category-bar" class="bg-[#FFF2E1] text-[#A79277] shadow-md overflow-x-auto whitespace-nowrap sticky top-0 z-10 border-b border-[#A79277]/30">
+    <div id="category-tabs" class="flex gap-3 px-4 py-3 min-w-max"></div>
+  </div>
+
+  <!-- 📋 محتوای منو -->
+  <main class="container mx-auto px-4 py-8 max-w-5xl">
+    <div id="categories" class="space-y-10"></div>
+
+    <div id="loading" class="text-center py-12">
+      <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#A79277]"></div>
+      <p class="mt-4 text-[#A79277]">در حال بارگذاری منو...</p>
+    </div>
+  </main>
+
+  <!-- 📜 Script -->
+  <script>
+    const code = location.pathname.split('/').filter(Boolean).pop();
+
+    async function loadMenu() {
+      try {
+        const res = await fetch(`/api/menu/${code}/`);
+        if (!res.ok) throw new Error('Menu not found');
+        const data = await res.json();
+
+        document.getElementById('loading').classList.add('hidden');
+        const cats = document.getElementById('categories');
+        const categoryTabs = document.getElementById('category-tabs');
+        cats.innerHTML = '';
+        categoryTabs.innerHTML = '';
+
+        if (!data.categories || data.categories.length === 0) {
+          cats.innerHTML = `
+            <div class="text-center py-12 text-[#A79277]">
+              <i class="fas fa-utensils text-4xl mb-4"></i>
+              <p>در حال حاضر هیچ آیتمی در منو وجود ندارد</p>
+            </div>`;
+          return;
+        }
+
+        // 🔖 تب کتگوری‌ها
+        data.categories.forEach((cat, index) => {
+          const tab = document.createElement('button');
+          tab.textContent = cat.name;
+          tab.className = `
+            px-4 py-2 rounded-full text-sm font-medium border border-[#A79277]
+            hover:bg-[#A79277] hover:text-[#FFF2E1] transition-all duration-200
+            ${index === 0 ? 'bg-[#A79277] text-[#FFF2E1]' : 'bg-[#FFF2E1] text-[#A79277]'}`;
+          
+          tab.addEventListener('click', () => {
+            document.querySelectorAll('#category-tabs button').forEach(btn => {
+              btn.classList.remove('bg-[#A79277]', 'text-[#FFF2E1]');
+              btn.classList.add('bg-[#FFF2E1]', 'text-[#A79277]');
+            });
+            tab.classList.add('bg-[#A79277]', 'text-[#FFF2E1]');
+            const section = document.getElementById(`cat-${cat.id}`);
+            if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          });
+          categoryTabs.appendChild(tab);
+        });
+
+        // 📸 باکس کتگوری
+        data.categories.forEach(cat => {
+          const section = document.createElement('div');
+          section.id = `cat-${cat.id}`;
+          section.className = 'relative rounded-3xl overflow-hidden shadow-lg bg-cover bg-center text-[#FFF2E1]';
+          section.style.backgroundImage = `url('${cat.image_url || cat.image || '/static/default.jpg'}')`;
+
+          const overlay = document.createElement('div');
+          overlay.className = 'bg-[#3f3a37]/50 backdrop-blur-sm flex flex-col justify-center items-center text-center p-6 rounded-3xl';
+
+          const title = document.createElement('h2');
+          title.className = 'text-2xl font-bold mb-6';
+          title.textContent = cat.name;
+          overlay.appendChild(title);
+
+          // 📦 گرید آیتم‌ها
+          const itemContainer = document.createElement('div');
+          itemContainer.className = 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full max-w-4xl';
+
+          cat.items.forEach(it => {
+            const item = document.createElement('div');
+            item.className = 'glass rounded-3xl p-4 text-right text-[#3F3A37] bg-[#FFF2E1]/50 hover:bg-[#FFF2E1]/70 transition-all flex items-start gap-3';
+
+            item.innerHTML = `
+              <i class="fa-solid fa-mug-saucer text-[#FFF2E1] text-xl coffee-item-icon mt-1"></i>
+              <div>
+                <h3 class="font-semibold text-lg">${it.name}</h3>
+                ${it.description ? `<p class="text-sm mt-1">${it.description}</p>` : ''}
+              </div>
+            `;
+            itemContainer.appendChild(item);
+          });
+
+          overlay.appendChild(itemContainer);
+          section.appendChild(overlay);
+          cats.appendChild(section);
+        });
+
+      } catch (error) {
+        console.error(error);
+        document.getElementById('loading').innerHTML = `
+          <div class="text-center py-12">
+            <i class="fas fa-exclamation-triangle text-3xl text-red-500 mb-4"></i>
+            <p class="text-red-600 font-medium">خطا در بارگذاری منو</p>
+            <p class="text-[#A79277] text-sm mt-2">لطفاً دوباره تلاش کنید</p>
+          </div>`;
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadMenu);
+  </script>
+</body>
+</html>
